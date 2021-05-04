@@ -31,7 +31,7 @@
     "react": "17.x",
     "react-dom": "17.x",
     "sass-loader": "^11.0.1",
-    "sn-editor-kit": "1.0.9",
+    "sn-editor-kit": "github:standardnotes/editor-kit.git#588ee2d98d034339c7704162acc0d0d961170438",
     "style-loader": "~2.0.0",
     "terser-webpack-plugin": "^5.1.1",
     "webpack": "^5.30.0",

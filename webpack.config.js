@@ -62,7 +62,7 @@ module.exports = {
     }),
     new CopyWebpackPlugin({
       patterns: [
-        { from: './node_modules/sn-editor-kit/dist/filesafe-js/EncryptionWorker.js', to: 'filesafe-js/EncryptionWorker.js' },
+        { from: './node_modules/@standardnotes/editor-kit/dist/filesafe-js/EncryptionWorker.js', to: 'filesafe-js/EncryptionWorker.js' },
       ],
     }),
     new MergeIntoSingleFilePlugin({
@@ -77,6 +77,6 @@ module.exports = {
           'redactor/plugins/inlinestyle/inlinestyle.min.css'
         ]
       }
-  }),
+    }),
   ]
 };

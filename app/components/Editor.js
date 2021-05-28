@@ -53,7 +53,7 @@ export default class Editor extends React.Component {
         // is if we use the proper redactor.insertion API, but I haven't found
         // a good way to use that API for inserting text at a given position.
         // There is 'insertToOffset', but where offset is the index of the
-        // plaintext, but I haven't found a way to map the adjacentTo element 
+        // plaintext, but I haven't found a way to map the adjacentTo element
         // to a plaintext offset. So for now this bug will persist.
 
         // insertionType can be either 'afterend' or 'child'
@@ -75,7 +75,7 @@ export default class Editor extends React.Component {
       },
       getCurrentLineText: () => {
         // Returns the text content of the node where the cursor currently is.
-        // Typically a paragraph if no formatter, otherwise the closest 
+        // Typically a paragraph if no formatter, otherwise the closest
         // formatted element, or null if there is no text content.
         const node = this.redactor.selection.getCurrent();
         return node.textContent;
@@ -157,18 +157,21 @@ export default class Editor extends React.Component {
       linkSize: 20000, // redactor default is 30, which truncates the link.
       buttonsAdd: ['filesafe'],
       buttons: [
-        'bold', 'italic', 'underline', 'deleted', 'format', 'fontsize',
-        'fontfamily', 'fontcolor', 'filesafe', 'link', 'lists', 'alignment',
-        'line', 'redo', 'undo', 'indent', 'outdent', 'textdirection', 'html'
+        'bold', 'italic', 'underline', 'deleted', 'format',
+        'fontcolor', 'filesafe', 'link', 'lists', 'alignment',
+        'line', 'indent', 'outdent', 'html'
+      ],
+      buttonsHideOnMobile: [
+        'deleted', 'fontfamily', 'fontcolor', 'link', 'alignment',
+        'indent', 'outdent', 'html', 'alignment', 'table'
       ],
       plugins: [
-        'filesafe', 'fontsize', 'fontfamily', 'fontcolor', 'alignment',
-        'table', 'inlinestyle', 'textdirection'
+        'filesafe', 'fontcolor', 'alignment', 'table', 'inlinestyle'
       ],
-      fontfamily: [
-        'Arial', 'Helvetica', 'Georgia', 'Times New Roman', 'Trebuchet MS',
-        'Monospace'
-      ],
+      // fontfamily: [
+      //   'Arial', 'Helvetica', 'Georgia', 'Times New Roman', 'Trebuchet MS',
+      //   'Monospace'
+      // ],
       callbacks: {
         changed: (html) => {
           // I think it's already cleaned so we don't need to do this.

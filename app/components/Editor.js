@@ -1,9 +1,8 @@
 import React from 'react';
 import FilesafeEmbed from 'filesafe-embed';
-import {
-  EditorKit,
-  EditorKitDelegate
-} from 'sn-editor-kit';
+import EditorKit from '@standardnotes/editor-kit';
+import DOMPurify  from 'dompurify';
+import { SKAlert } from 'sn-stylekit';
 
 // Not used directly here, but required to be imported so that it is included
 // in dist file.
@@ -17,6 +16,9 @@ export default class Editor extends React.Component {
   constructor(props) {
     super(props);
     this.state = {};
+    this.alert = null;
+    this.renderNote = false;
+    this.isNoteLocked = false;
   }
 
   componentDidMount() {
@@ -29,7 +31,7 @@ export default class Editor extends React.Component {
     // easier to build editors. As such, it very general and does not know
     // how the functions are implemented, just that they are needed. It is
     // up to the Bold Editor wrapper to implement these important functions.
-    const delegate = new EditorKitDelegate({
+    const delegate = {
       insertRawText: (rawText) => {
         this.redactor.insertion.insertHtml(rawText);
       },
@@ -116,25 +118,42 @@ export default class Editor extends React.Component {
         this.redactor.insertion.insertHtml(replacement, 'start');
         this.redactor.selection.restoreMarkers();
       },
-      onReceiveNote: (_note) => {
-        // Empty
-      },
       clearUndoHistory: () => {
         // Called when switching notes to prevent history mixup.
         $R('#editor', 'module.buffer.clear');
       },
+      onNoteValueChange: async (note) => {
+        this.renderNote = await this.shouldRenderNote(note);
+        this.isNoteLocked = this.getNoteLockState(note);
+
+        this.scrollToTop();
+      },
       setEditorRawText: (rawText) => {
+        // Disabling read-only mode so that we can use source.setCode
+        this.disableReadOnly();
+
+        if (!this.renderNote) {
+          $R('#editor', 'source.setCode', '');
+          this.enableReadOnly();
+          return;
+        }
+
         // Called when the Bold Editor is loaded, when switching to a Bold
         // Editor note, or when uploading files, maybe in more places too.
         const cleaned = this.redactor.cleaner.input(rawText);
         $R('#editor', 'source.setCode', cleaned);
-      }
-    });
 
-    this.editorKit = new EditorKit({
-      delegate: delegate,
+        if (this.isNoteLocked) {
+          this.enableReadOnly();
+        } else {
+          this.disableReadOnly();
+        }
+      }
+    };
+
+    this.editorKit = new EditorKit(delegate, {
       mode: 'html',
-      supportsFilesafe: true,
+      supportsFileSafe: true,
       // Redactor has its own debouncing, so we'll set ours to 0
       coallesedSavingDelay: 0
     });
@@ -144,7 +163,7 @@ export default class Editor extends React.Component {
     // We need to set this as a window variable so that the filesafe plugin
     // can interact with this object passing it as an opt for some reason
     // strips any functions off the objects.
-    const filesafeInstance = await this.editorKit.getFilesafe();
+    const filesafeInstance = await this.editorKit.getFileSafe();
     window.filesafe_params = {
       embed: FilesafeEmbed,
       client: filesafeInstance
@@ -174,6 +193,9 @@ export default class Editor extends React.Component {
       // ],
       callbacks: {
         changed: (html) => {
+          if (this.isNoteLocked || this.redactor.isReadOnly() || !this.renderNote) {
+            return;
+          }
           // I think it's already cleaned so we don't need to do this.
           // let cleaned = this.redactor.cleaner.output(html);
           this.editorKit.onEditorValueChanged(html);
@@ -214,7 +236,9 @@ export default class Editor extends React.Component {
     // "Set the focus to the editor layer to the end of the content."
     // Doesn't work because setEditorRawText is called when loading a note and
     // it doesn't save the caret location, so focuses to beginning.
-    this.redactor.editor.endFocus();
+    if (!this.redactor.editor.isEmpty()) {
+      this.redactor.editor.endFocus();
+    }
   }
 
   onEditorFilesDrop(files) {
@@ -233,10 +257,149 @@ export default class Editor extends React.Component {
     }
   }
 
+  /**
+   * Checks if HTML is safe to render.
+   */
+  checkIfUnsafeContent(renderedHtml) {
+    const sanitizedHtml = DOMPurify.sanitize(renderedHtml, {
+      /**
+       * We don't need script or style tags.
+       */
+      FORBID_TAGS: ['script', 'style'],
+      /**
+       * XSS payloads can be injected via these attributes.
+       */
+      FORBID_ATTR: [
+        'onerror',
+        'onload',
+        'onunload',
+        'onclick',
+        'ondblclick',
+        'onmousedown',
+        'onmouseup',
+        'onmouseover',
+        'onmousemove',
+        'onmouseout',
+        'onfocus',
+        'onblur',
+        'onkeypress',
+        'onkeydown',
+        'onkeyup',
+        'onsubmit',
+        'onreset',
+        'onselect',
+        'onchange'
+      ]
+    });
+
+    /**
+     * Create documents from both the sanitized string and the rendered string.
+     * This will allow us to compare them, and if they are not equal
+     * (i.e: do not contain the same properties, attributes, inner text, etc)
+     * it means something was stripped.
+     */
+    const renderedDom = new DOMParser().parseFromString(renderedHtml, 'text/html');
+    const sanitizedDom = new DOMParser().parseFromString(sanitizedHtml, 'text/html');
+    return !renderedDom.isEqualNode(sanitizedDom);
+  }
+
+  async showUnsafeContentAlert() {
+    const text = 'We’ve detected that this note contains a script or code snippet which may be unsafe to execute. ' +
+                  'Scripts executed in the editor have the ability to impersonate as the editor to Standard Notes. ' +
+                  'Press Continue to mark this script as safe and proceed, or Cancel to avoid rendering this note.';
+
+    return new Promise((resolve) => {
+      this.alert = new SKAlert({
+        title: null,
+        text,
+        buttons: [
+          {
+            text: 'Cancel',
+            style: 'neutral',
+            action: function() {
+              resolve(false);
+            },
+          },
+          {
+            text: 'Continue',
+            style: 'danger',
+            action: function() {
+              resolve(true);
+            },
+          },
+        ]
+      });
+      this.alert.present();
+    });
+  }
+
+  setTrustUnsafeContent(note) {
+    this.editorKit.saveItemWithPresave(note, () => {
+      note.clientData = {
+        ...note.clientData,
+        trustUnsafeContent: true
+      };
+    });
+  }
+
+  enableReadOnly() {
+    if (this.redactor.isReadOnly()) {
+      return;
+    }
+    $R('#editor', 'enableReadOnly');
+  }
+
+  disableReadOnly() {
+    if (!this.redactor.isReadOnly()) {
+      return;
+    }
+    $R('#editor', 'disableReadOnly');
+  }
+
+  scrollToTop() {
+    window.scroll(0, 0);
+  }
+
+  async shouldRenderNote(noteItem) {
+    this.dismissUnsafeContentAlerts();
+
+    const isUnsafeContent = this.checkIfUnsafeContent(noteItem.content.text);
+    const trustUnsafeContent = noteItem.clientData['trustUnsafeContent'] ?? false;
+
+    if (!isUnsafeContent) {
+      return true;
+    }
+
+    if (isUnsafeContent && trustUnsafeContent) {
+      return true;
+    }
+
+    const result = await this.showUnsafeContentAlert();
+    if (result) {
+      this.setTrustUnsafeContent(noteItem);
+    }
+
+    return result;
+  }
+
+  dismissUnsafeContentAlerts() {
+    try {
+      if (this.alert) {
+        this.alert.dismiss();
+      }
+      this.alert = null;
+    } catch (e) {
+      console.warn('Trying to dismiss an alert that does not exist anymore.');
+    }
+  }
+
+  getNoteLockState(note) {
+    return note.content.appData['org.standardnotes.sn']['locked'] ?? false;
+  }
+
   render() {
     return (
-      <div key="editor" className={'sn-component ' + this.state.platform}>
-      </div>
+      <div key="editor" className={'sn-component'} />
     );
   }
 }

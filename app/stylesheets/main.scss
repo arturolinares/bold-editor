@@ -1,7 +1,5 @@
 // filesafe-embed/dist.css contians stylekit, so we don't need to import it ourselves.
-// @import "~stylekit";
-$f-monospace: Consolas, Menlo, Monaco, 'Fira Mono', Inconsolata, 'Curier New', monospace;
-$f-body: Carlito, Calibri, 'Open Sans', 'Noto';
+@import "~stylekit";
 
 body,
 html {
@@ -23,10 +21,11 @@ html {
     height: 100%;
 }
 
-#editor.redactor-styles {
+#editor {
     flex-grow: 1;
-    font-size: var(--sn-stylekit-font-size-editor);
-    line-height: 1.6 !important;
+    font-family: monospace !important;
+    font-size: var(--sn-stylekit-font-size-editor) !important;
+    line-height: 1.3 !important;
     -webkit-overflow-scrolling: touch;
 
     pre {
@@ -60,7 +59,7 @@ html {
 .windows-desktop,
 .linux-desktop {
     #editor {
-        font-family: $f-body;
+        font-family: Menlo, Consolas, 'DejaVu Sans Mono', monospace !important;
     }
 }
 
@@ -68,43 +67,18 @@ html {
     background-color: green;
 }
 
-#editor.redactor-styles {
+.redactor-styles {
     // Sets global text color, including editor
     color: var(--sn-stylekit-editor-foreground-color) !important;
-    code {
-        padding: 1px;
-        line-height: inherit;
-        border-radius: 4px;
-        font-family: $f-monospace;
-    }
+    font-family: monospace;
 
-    h1 {
-        color: inherit;
-        font-family: $f-body;
-        font-weight: normal;
-    }
-    h2 {
-        filter: brightness(90%);
-        font-weight: normal;
-    }
-    h3 {
-        filter: brightness(130%);
-        font-weight: normal;
-    }
-    h4 {
-        filter: brightness(70%);
-        font-weight: bold;
-    }
-
+    h1,
     h2,
     h3,
-    h4 {
-        color: var(--sn-stylekit-info-color) !important;
-    }
-
+    h4,
     h5,
     h6 {
-        color: var(--sn-stylekit-editor-foreground-color);
+        color: var(--sn-stylekit-editor-foreground-color) !important;
     }
 
     a {
@@ -212,13 +186,11 @@ html {
     border-color: var(--sn-stylekit-info-color) !important;
     color: var(--sn-stylekit-editor-foreground-color) !important;
     background-color: var(--sn-stylekit-editor-background-color) !important;
-    font-family: Consolas, Consolas, 'Fira Mono', Inconsolata, monospace;
     // background-color: red !important;
 }
 
 .redactor-styles var {
     color: var(--sn-stylekit-info-color) !important;
-    font-family: Menlo, Consolas, 'Fira Mono', Inconsolata, monospace;
 }
 
 ol *,
@@ -292,4 +264,9 @@ hr {
 
 .redactor-focus.redactor-styles-on {
     border: none !important;
+}
+
+.redactor-toolbar-wrapper > .redactor-toolbar.redactor-toolbar-fixed {
+    background-color: var(--sn-stylekit-background-color) !important;
+    opacity: 0.95;
 }
